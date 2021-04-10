@@ -1,0 +1,91 @@
+
+#include<iostream>
+#include<opencv2/opencv.hpp>
+#include<opencv2/highgui/highgui.hpp>
+#include<opencv2/imgproc/imgproc.hpp>
+#include<opencv2/core/core.hpp>
+#include<cmath>
+using namespace cvflann;
+using namespace cv;
+using namespace std;
+const int max_value_H = 360 / 2;
+const int max_value = 255;
+int low_H = 0, low_L = 0, low_S = 0;
+int high_H = max_value_H, high_L = max_value, high_S = max_value;
+//颜色区间
+String HLSname = "HLS";
+Mat src_HLS;
+
+static void on_low_H_thresh_trackbar(int, void*)
+{
+    low_H = min(high_H - 1, low_H);
+    setTrackbarPos("Low H", HLSname, low_H);
+}
+static void on_high_H_thresh_trackbar(int, void*)
+{
+    high_H = max(high_H, low_H + 1);
+    setTrackbarPos("High H", HLSname, high_H);
+}
+static void on_low_L_thresh_trackbar(int, void*)
+{
+    low_L = min(high_L - 1, low_L);
+    setTrackbarPos("Low L", HLSname, low_L);
+}
+static void on_high_L_thresh_trackbar(int, void*)
+{
+    high_L = max(high_L, low_L + 1);
+    setTrackbarPos("High L", HLSname, high_L);
+}
+static void on_low_S_thresh_trackbar(int, void*)
+{
+    low_S = min(high_S - 1, low_S);
+    setTrackbarPos("Low V", HLSname, low_S);
+}
+static void on_high_S_thresh_trackbar(int, void*)
+{
+    high_S = max(high_S, low_S + 1);
+    setTrackbarPos("High S", HLSname, high_S);
+}
+
+int main()
+{
+    VideoCapture capture(1);
+    Mat src;
+    while (1)
+    {
+        capture >> src;
+         Mat src_gauss;
+        GaussianBlur(src, src_gauss, Size(3, 3), 2, 2);
+        threshold(src_gauss, src_gauss, 100, 255, THRESH_BINARY);  //调大圆变小
+        medianBlur(src_gauss, src_gauss, 9);
+        //hls滑动条
+        createTrackbar("Low H", HLSname, &low_H, max_value_H, on_low_H_thresh_trackbar);
+        createTrackbar("High H", HLSname, &high_H, max_value_H, on_high_H_thresh_trackbar);
+        createTrackbar("Low L", HLSname, &low_L, max_value, on_low_L_thresh_trackbar);
+        createTrackbar("High L", HLSname, &high_L, max_value, on_high_L_thresh_trackbar);
+        createTrackbar("Low S", HLSname, &low_S, max_value, on_low_S_thresh_trackbar);
+        createTrackbar("High S", HLSname, &high_S, max_value, on_high_S_thresh_trackbar);
+        
+        cvtColor(src_gauss, src_HLS,COLOR_BGR2HSV);
+        inRange(src_HLS, Scalar(low_H, low_L, low_S), Scalar(high_H, high_L, high_S), src_HLS);
+       // inRange(src_HLS, Scalar(55, 48, 248), Scalar(74, 128, 255), src_HLS);
+       // inRange(src_HLS, Scalar(0, 6, 0), Scalar(78, 71, 81), src_HLS);
+
+
+        //inRange(hls, Scalar(40, 30, 160), Scalar(180, 141, 255), clo_threshold);
+
+        namedWindow("capture", WINDOW_GUI_NORMAL);  //摄像头获取图像
+        namedWindow(HLSname, WINDOW_GUI_NORMAL);   //hls处理
+        namedWindow("红绿灯", WINDOW_GUI_NORMAL);
+        imshow("红绿灯", src_HLS);
+        imshow("capture", src);
+        imshow(HLSname, src_HLS);
+
+        //cvtColor(src_HLS, src_HLS, COLOR_BGR2Lab);
+
+        int key = waitKey(1);
+        if (char(key) == 27)break;
+
+    }
+    return 0;
+}
