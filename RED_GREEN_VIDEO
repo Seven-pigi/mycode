@@ -1,0 +1,253 @@
+#include<iostream>
+#include<opencv2/opencv.hpp>
+#include<opencv2/highgui/highgui.hpp>
+#include<opencv2/imgproc/imgproc.hpp>
+#include<opencv2/core/core.hpp>
+#include<cmath>
+using namespace cvflann;
+using namespace cv;
+using namespace std;
+
+
+//获取红绿灯视频
+// 声明函数
+void move_lamp(int lamp_m_h, int lamp_m_w, int bg_m_h, int bg_m_w, Mat mask, Mat lamp);
+void move(int& lamp_m_h, int& lamp_m_w, int& lamp_m_h_unit, int& lamp_m_w_unit, int& bg_m_h, int& bg_m_w, int& bg_m_h_unit, int& bg_m_w_unit);
+Mat make_mask(Mat lamp);
+int randNum(int min_val, int max_val);
+
+// ---------- 自行修改 -----------------
+int bg_h = 1440, bg_w = 900;        //bg图片大小
+int lamp_h = 950, lamp_w = 450;     //lamp图片大小（调整）
+
+
+//  载入图片 "路径"  ------ 自行修改 --------------
+String BG = "F:/OpenCv/任务/队内赛/红绿灯/视频/50c2b1eda1b1dacfde207c3d6c35a5c1_a5caccca86c35b4e95186c45e677ca9c_8/dist/BG.png";
+String GREEN_filename = "F:/OpenCv/任务/队内赛/红绿灯/视频/50c2b1eda1b1dacfde207c3d6c35a5c1_a5caccca86c35b4e95186c45e677ca9c_8/dist/GREEN_cut.png";
+String GREEN_yellow_on_filename = "F:/OpenCv/任务/队内赛/红绿灯/视频/50c2b1eda1b1dacfde207c3d6c35a5c1_a5caccca86c35b4e95186c45e677ca9c_8/dist/GREEN(yellow-on)_cut.png";
+String RED_filename = "F:/OpenCv/任务/队内赛/红绿灯/视频/50c2b1eda1b1dacfde207c3d6c35a5c1_a5caccca86c35b4e95186c45e677ca9c_8/dist/RED_cut.png";
+String RED_yellow_on_filename = "F:/OpenCv/任务/队内赛/红绿灯/视频/50c2b1eda1b1dacfde207c3d6c35a5c1_a5caccca86c35b4e95186c45e677ca9c_8/dist/RED(yellow-on)_cut.png";
+
+// BG图片全局
+Mat BG_image;
+Mat BG_image_move;
+
+
+
+int main()
+{
+    // -------------------- 先把图片全部加载完 ----------------------------
+    BG_image = imread(BG);
+    resize(BG_image, BG_image, Size(BG_image.cols / 2, BG_image.rows / 2));
+
+    Mat lamp_G = imread(GREEN_filename);
+    resize(lamp_G, lamp_G, Size(lamp_G.cols / 2, lamp_G.rows / 2));
+    Mat mask_G = make_mask(lamp_G);
+
+    Mat lamp_G_y = imread(GREEN_yellow_on_filename);
+    resize(lamp_G_y, lamp_G_y, Size(lamp_G_y.cols / 2, lamp_G_y.rows / 2));
+    Mat mask_G_y = make_mask(lamp_G_y);
+
+    Mat lamp_R = imread(RED_filename);
+    resize(lamp_R, lamp_R, Size(lamp_R.cols / 2, lamp_R.rows / 2));
+    Mat mask_R = make_mask(lamp_R);
+
+    Mat lamp_R_y = imread(RED_yellow_on_filename);
+    resize(lamp_R_y, lamp_R_y, Size(lamp_R_y.cols / 2, lamp_R_y.rows / 2));
+    Mat mask_R_y = make_mask(lamp_R_y);
+    // -------------------- 防止反复 imread 卡顿 ---------------------------
+
+
+    // -----------------------后续修改建议使用结构体--------------------------
+    int lamp_m_h = 111, lamp_m_w = 111;         //lamp_ROI移动起始点
+    int lamp_m_h_unit = 2, lamp_m_w_unit = 3;   //lamp移动单位
+
+    int bg_m_h = 130, bg_m_w = 130;                 //BG_ROI移动起始点
+    int bg_m_h_unit = -4, bg_m_w_unit = -3;       //BG移动单位
+    // -----------------------后续修改建议使用结构体--------------------------
+
+    //待机画面
+    move_lamp(lamp_m_h, lamp_m_w, bg_m_h, bg_m_w, mask_G, lamp_G);
+    waitKey(0); //待机   test_read();
+
+    while (1)   //capture.read(frame)
+    {
+        int latency_time;
+        int flag = 0;
+        //发送切换红绿灯信号
+        //test_send();
+        latency_time = randNum(46, 115);              //获得范围内的随机数
+        for (int i = 0; i < latency_time; i++)        //60帧下, 循环60次大概需要 1.31秒         =>         换算下来即为 45.8015次 循环的时间 花费1秒
+        {
+            move_lamp(lamp_m_h, lamp_m_w, bg_m_h, bg_m_w, mask_G, lamp_G);
+            move(lamp_m_h, lamp_m_w, lamp_m_h_unit, lamp_m_w_unit, bg_m_h, bg_m_w, bg_m_h_unit, bg_m_w_unit);
+
+            //达到某个时间后，读取传入的判断信息
+            if (i > 45 && flag == 0)
+            {
+                //test_read();
+                //flag++;
+            }
+        }
+        flag = 0;       //重置flag
+
+        for (int j = 0; j < 2; j++)
+        {
+            int l = 0;
+            while (l < 5)
+            {
+                move_lamp(lamp_m_h, lamp_m_w, bg_m_h, bg_m_w, mask_G_y, lamp_G_y);
+                move(lamp_m_h, lamp_m_w, lamp_m_h_unit, lamp_m_w_unit, bg_m_h, bg_m_w, bg_m_h_unit, bg_m_w_unit);
+                l++;
+            }
+            while (l < 10)
+            {
+                move_lamp(lamp_m_h, lamp_m_w, bg_m_h, bg_m_w, mask_G, lamp_G);
+                move(lamp_m_h, lamp_m_w, lamp_m_h_unit, lamp_m_w_unit, bg_m_h, bg_m_w, bg_m_h_unit, bg_m_w_unit);
+                l++;
+            }
+        }
+
+        //发送切换红绿灯信号
+        //test_send();
+        latency_time = randNum(46, 115);            //获得范围内的随机数
+        for (int i = 0; i < latency_time; i++)
+        {
+            move_lamp(lamp_m_h, lamp_m_w, bg_m_h, bg_m_w, mask_R, lamp_R);
+            move(lamp_m_h, lamp_m_w, lamp_m_h_unit, lamp_m_w_unit, bg_m_h, bg_m_w, bg_m_h_unit, bg_m_w_unit);
+
+            //达到某个时间后，读取传入的判断信息
+            if (i > 45 && flag == 0)
+            {
+                //test_read();
+                //flag++;
+            }
+        }
+        for (int j = 0; j < 2; j++)
+        {
+            int l = 0;
+            while (l < 5)
+            {
+                move_lamp(lamp_m_h, lamp_m_w, bg_m_h, bg_m_w, mask_R_y, lamp_R_y);
+                move(lamp_m_h, lamp_m_w, lamp_m_h_unit, lamp_m_w_unit, bg_m_h, bg_m_w, bg_m_h_unit, bg_m_w_unit);
+                l++;
+            }
+            while (l < 10)
+            {
+                move_lamp(lamp_m_h, lamp_m_w, bg_m_h, bg_m_w, mask_R, lamp_R);
+                move(lamp_m_h, lamp_m_w, lamp_m_h_unit, lamp_m_w_unit, bg_m_h, bg_m_w, bg_m_h_unit, bg_m_w_unit);
+                l++;
+            }
+        }
+
+
+
+    }
+
+}
+
+// imread 处理太慢了，会导致帧数低
+// 移动lamp显示
+void move_lamp(int lamp_m_h, int lamp_m_w, int bg_m_h, int bg_m_w, Mat mask, Mat lamp)
+{
+    int64 time0 = getTickCount();
+
+    //(不能用)浅拷贝, 当图像之间进行赋值时，图像数据并未发生复制，两个对象指向同一块内存, 改变图像2会影响图像 1
+    //Mat image_2 = image;
+
+    //深拷贝, 当图像之间进行赋值时，图像数据发生复制，两个对象指向不同的内存, 改变图像2不会影响图像 1
+    //img.copyTo(image);
+    Mat BG_ROI = BG_image(Rect(bg_m_h, bg_m_h, 1440 - 150, 900 - 150));
+    Mat BG_image_2 = BG_ROI.clone();
+
+
+    Mat imROI;
+    // x , y ;
+    imROI = BG_image_2(Rect(lamp_m_h, lamp_m_w, lamp.cols, lamp.rows));
+    //image.copyTo(imageROI，mask), 作用是把mask和image重叠以后把mask中像素值为0（black）的点对应的image中的点变为透明，而保留其他点。
+    lamp.copyTo(imROI, mask);
+    namedWindow("hld", WINDOW_NORMAL);
+    imshow("hld", BG_image_2);
+
+    /*
+    Mat BG_gray = BG_image_2.clone();
+    cvtColor(BG_image_2, BG_gray, COLOR_BGR2GRAY);
+    imshow("gray", BG_gray);
+    */
+
+    //测试帧数相关
+    waitKey(12);
+
+    cout << "当前帧率：" << getTickFrequency() / (getTickCount() - time0) << endl;
+}
+
+// -------------------- 限制移动范围，自行修改 -------------------------------
+// 反弹路径
+void move(int& lamp_m_h, int& lamp_m_w, int& lamp_m_h_unit, int& lamp_m_w_unit, int& bg_m_h, int& bg_m_w, int& bg_m_h_unit, int& bg_m_w_unit)
+{
+    //lamp_ROI点 移动区域
+    lamp_m_h += lamp_m_h_unit;
+    lamp_m_w += lamp_m_w_unit;
+
+    //高度达到上下限则反弹
+    if (lamp_m_h >= bg_h - lamp_h - 100 || lamp_m_h <= 10 + 10)
+    {
+        lamp_m_h_unit = -lamp_m_h_unit;
+        lamp_m_h += 2 * lamp_m_h_unit;
+    }
+    //宽度达到上下限反弹
+    if (lamp_m_w >= bg_w - lamp_w - 100 || lamp_m_w <= 10 + 10)
+    {
+        lamp_m_w_unit = -lamp_m_w_unit;
+        lamp_m_w += 2 * lamp_m_w_unit;
+    }
+
+
+    //BG_ROI 移动区域
+    bg_m_h += bg_m_h_unit;
+    bg_m_w += bg_m_w_unit;
+
+    if (bg_m_h >= 145 || bg_m_h <= 5)
+    {
+        bg_m_h_unit = -bg_m_h_unit;
+        bg_m_h += 2 * bg_m_h_unit;
+    }
+    if (bg_m_w >= 145 || bg_m_w <= 5)
+    {
+        bg_m_w_unit = -bg_m_w_unit;
+        bg_m_w += 2 * bg_m_w_unit;
+    }
+}
+
+// 做掩膜
+Mat make_mask(Mat lamp)
+{
+    Mat grayPng;
+    cvtColor(lamp, grayPng, COLOR_BGR2GRAY);
+    //resize(grayPng, grayPng, Size(grayPng.cols / 2, grayPng.rows / 2));
+
+    threshold(grayPng, grayPng, 10, 255, THRESH_BINARY);
+    //掩模反色
+    //Mat mask = 255 - grayPng;
+    Mat mask = grayPng;
+    //imshow("mask", mask);
+
+    return mask;
+}
+
+//@brief:产生[min_val,max_val]范围内的随机数
+//@param:min_val:最小值
+//@param:max_val:最大值
+//@return:生成的随机数
+int randNum(int min_val, int max_val)
+{
+    //判断前检查 min_val 和 max_val的值大小对比
+    if (min_val > max_val)
+    {
+        cout << "不符合要求，min_val必须小等于max_val的值。" << endl;
+        return 0;
+    }
+    //
+   // int num_val = rand() % (max_val - min_val + 1) + min_val;
+   // return num_val;
+}
