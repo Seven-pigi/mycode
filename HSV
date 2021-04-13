@@ -1,5 +1,4 @@
-//试hsv
-/*
+
 const int max_value_H = 360 / 2;
 const int max_value = 255;
 int low_H = 0, low_L = 0, low_S = 0;
