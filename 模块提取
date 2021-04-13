@@ -1,0 +1,133 @@
+
+Point getNextMinLoc(Mat& result, Point minLoc, int maxValue, int templatW, int templatH);
+
+int main(void)
+{
+    VideoCapture capture(1);
+    Mat src;
+    while (1)
+    {
+        capture >> src;
+
+    Mat srcCopy = src.clone();
+
+    Mat temp = imread("F:/OpenCv/任务/队内赛/红绿灯/视频/50c2b1eda1b1dacfde207c3d6c35a5c1_a5caccca86c35b4e95186c45e677ca9c_8/dist/RED.png");
+    resize(temp, temp, Size(300, 300));    Mat result;
+
+    if (src.empty() || temp.empty())
+    {
+        cout << "打开图片失败" << endl;
+        return 0;
+    }
+
+    vector<Mat> templat;
+    vector<float> minV;
+    vector<Point> minL;
+
+    int srcW, srcH, templatW, templatH, resultH, resultW;
+    srcW = src.cols;
+    srcH = src.rows;
+    templat.push_back(temp);
+    double minValue, maxValue;
+    Point minLoc, maxLoc;
+
+    for (int i = 0; i < 10; i++)
+    {
+        cout << i << ": ";
+        templatW = templat[i].cols;
+        templatH = templat[i].rows;
+
+        if (srcW < templatW || srcH < templatH)
+        {
+            cout << "模板不能比原图大" << endl;
+            return 0;
+        }
+
+        resultW = srcW - templatW + 1;
+        resultH = srcH - templatH + 1;
+
+        result.create(Size(resultW, resultH), CV_32FC1);
+        matchTemplate(src, templat[i], result, TM_SQDIFF_NORMED);
+
+        cv::minMaxLoc(result, &minValue, &maxValue, &minLoc, &maxLoc);
+
+        cout << "min1: " << minValue << endl;
+        if (minValue <= 0.070055)
+        {
+            rectangle(srcCopy, minLoc, Point(minLoc.x + templatW, minLoc.y + templatH), Scalar(0, 0, 255), 2, 8, 0);
+
+            Point new_minLoc;
+            new_minLoc = getNextMinLoc(result, minLoc, maxValue, templatW, templatH);
+
+            float* data = result.ptr<float>(new_minLoc.y);
+
+            cout << "min2: " << data[new_minLoc.x] << " ";
+            if (data[new_minLoc.x] <= 0.5)
+            {
+                cout << "进这个函数了:" << i << "：" << new_minLoc.x;
+                cout << " " << new_minLoc.y;
+                rectangle(srcCopy, new_minLoc, Point(new_minLoc.x + templatW, new_minLoc.y + templatH),
+                    Scalar(0, 255, 0), 2, 8, 0);
+                new_minLoc = getNextMinLoc(result, new_minLoc, maxValue, templatW, templatH);
+            }
+
+            float* data1 = result.ptr<float>(new_minLoc.y);
+            cout << "min3: " << data1[new_minLoc.x] << " " << endl;
+            if (data1[new_minLoc.x] <= 0.4)
+            {
+
+                rectangle(srcCopy, new_minLoc, Point(new_minLoc.x + templatW, new_minLoc.y + templatH),
+                    Scalar(255, 0, 0), 2, 8, 0);
+            }
+        }
+        cout << "#" << endl;
+        Mat temp_templat;
+        resize(templat[i], temp_templat, Size(templat[i].cols / 1.1, templat[i].rows / 1.1));
+        templat.push_back(temp_templat);
+        imshow("结果",temp_templat);
+        imshow("果", srcCopy);
+    }
+
+
+    int key = waitKey(1);
+    if (char(key) == 27)break;
+
+    }
+    return 0;
+
+}
+
+Point getNextMinLoc(Mat& result, Point minLoc, int maxValue, int templatW, int templatH)
+{
+    //imshow("result", result);
+    //cout << "maxvalue: " << maxValue << endl;
+    int startX = minLoc.x - templatW / 3;
+    int startY = minLoc.y - templatH / 3;
+    int endX = minLoc.x + templatW / 3;
+    int endY = minLoc.y + templatH / 3;
+    if (startX < 0 || startY < 0)
+    {
+        startX = 0;
+        startY = 0;
+    }
+    if (endX > result.cols - 1 || endY > result.rows - 1)
+    {
+        endX = result.cols - 1;
+        endY = result.rows - 1;
+    }
+    int y, x;
+    for (y = startY; y < endY; y++)
+    {
+        for (x = startX; x < endX; x++)
+        {
+            float* data = result.ptr<float>(y);
+
+            data[x] = maxValue;
+        }
+    }
+    double new_minValue, new_maxValue;
+    Point new_minLoc, new_maxLoc;
+    cv::minMaxLoc(result, &new_minValue, &new_maxValue, &new_minLoc, &new_maxLoc);
+    //imshow("result_end", result);
+    return new_minLoc;
+}
