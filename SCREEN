@@ -1,0 +1,151 @@
+void near_screen()
+{
+    VideoCapture capture(1);
+    Mat src, src_HSV;
+    Mat src_circle;
+    while (1)
+    {
+        capture >> src;
+       // capture_circle >> src_circle;
+        cvtColor(src, src_HSV, COLOR_BGR2HSV);
+        inRange(src_HSV, Scalar(0, 98, 16), Scalar(180, 255, 255), src_HSV);   //屏幕
+        // inRange(src_HSV, Scalar(57, 210, 21), Scalar(158, 255, 66), src_HSV);   //红灯【修改】
+       // 测矩形
+        vector<vector<Point>> contours;
+        vector<Vec4i> hierarchy;
+        findContours(src_HSV, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE, Point(0, 0));
+        vector<vector<Point>>::iterator area_re = contours.begin();  //筛选面积
+        for (; area_re != contours.end(); )
+        {
+            double dconArea = contourArea(*area_re);
+            if (dconArea < 500)  //改动
+                area_re = contours.erase(area_re);
+            else
+                ++area_re;
+        }
+        vector<Rect> boundRect(contours.size());  //检测矩形
+        int length; int width;
+        Point2f a[2];
+        for (int i = 0; i < contours.size(); i++) {
+            boundRect[i] = boundingRect(Mat(contours[i]));
+            a[0] = boundRect[i].br();
+            a[1] = boundRect[i].tl();
+            length = a[1].x - a[0].x;
+            width = a[1].y - a[0].y;
+
+            if (length / width >= 1&&length/width<=1.5) //16:9 /4:3
+            {
+               // if(length/width==1)
+                rectangle(src, boundRect[i].tl(), boundRect[i].br(), Scalar(125, 0, 0), 3, 8, 0);  //获得屏幕  
+                //near_green(a[0].x, a[1].x, a[0].y, a[1].y);  //绿灯检测
+            }
+        }
+        //  Mat ROI = src(Range((src.rows / 5) * 2, (src.rows / 5) * 3), Range((src.cols / 5) * 2, (src.cols / 5) * 3));//起始位ROI区域
+        
+        //检测绿灯
+        Mat src_hsv_green;
+        cvtColor(src, src_hsv_green, COLOR_BGR2HSV);
+        //inRange(src_HLS, Scalar(low_H, low_L, low_S), Scalar(high_H, high_L, high_S), src_HLS);
+        inRange(src_hsv_green, Scalar(44, 36, 171), Scalar(81, 125, 255), src_hsv_green);
+
+        vector<Rect> boundRect_re(contours.size());  //检测矩形
+
+        Point2f b[2];
+        for (int i = 0; i < contours.size(); i++) {
+            boundRect_re[i] = boundingRect(Mat(contours[i]));
+            b[0] = boundRect_re[i].br();
+            b[1] = boundRect_re[i].tl();
+  
+//判断检测出的矩形是否在屏幕内
+            if (length / width == 1&&b[0].x>a[0].x&&b[1].y<a[1].y) //16:9 /4:3
+            {
+                rectangle(src, boundRect_re[i].tl(), boundRect_re[i].br(), Scalar(125, 0, 0), 3, 8, 0);    
+            }
+        }
+        /*遍历像素点
+        int num = 0;
+        for (int y = a[0].y; y < a[1].y; y++) {
+            for (int x = a[0].x; x < a[1].x; x++) {
+                uchar* data = src_HSV.ptr<uchar>(y);
+                int pixel = data[x];
+                if (pixel == 255)
+                    num++;
+            }
+        }
+        */
+        
+        /*  //另一种
+        int counter = 0;
+    int rowNumber = im.rows;  //行数
+    int colNumber = im.cols * im.channels();  //列数 x 通道数=每一行元素的个数
+
+    //双重循环，遍历所有的像素值
+    for (int i = 0; i < rowNumber; i++)  //行循环
+    {
+        uchar* data = im.ptr<uchar>(i);  //获取第i行的首地址
+        for (int j = 0; j < colNumber; j++)   //列循环
+        {
+            //data[j] = data[j] / div * div + div / 2;
+            //cout << (int)data[j] << endl;
+            if( data[j] == 255) counter += 1;
+
+        }  //行处理结束
+    }
+
+        cout << num << endl;
+        */
+/*                                    //检测圆
+                 vector<Vec3f>circles;
+                 HoughCircles(src_HLS, circles, HOUGH_GRADIENT, 1, 10, 150, 30, 5, 50);
+
+                 for (size_t i = 0; i < circles.size(); i++) {
+                     Point center(cvRound(circles[i][0]), cvRound(circles[i][1]));
+                     int radius = cvRound(circles[i][2]);
+                     circle(src, center, 3,Scalar(120, 255, 255), 2, 8, 0);
+                     circle(src, center, radius, Scalar(100, 255, 255), 2, 8, 0);
+
+        
+      //  int num = src_HSV.at<uchar>(circles[0][1], circles[0][0]);  //圆心（霍夫圆检测不到）
+        if (num == 255)  //白色
+        {
+            cout << "Green" << endl;
+        }
+       
+        */
+       // namedWindow("capture", WINDOW_NORMAL);  //摄像头获取图像
+        //namedWindow("hsv_screen", WINDOW_NORMAL);
+        namedWindow("green", WINDOW_NORMAL);
+        imshow(" ", src_HSV);
+        //imshow("green", src_hsv_green);
+        imshow("green_s", src);
+       // imshow("circles", src_circle);
+       
+        int key = waitKey(1);
+        if (char(key) == 27)break;
+    }
+
+}
+
+
+
+/*
+ // 测矩形
+        vector<vector<Point>> contours;
+        vector<Vec4i> hierarchy;
+        findContours(src_HSV, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE, Point(0, 0));
+
+        vector<Rect> boundRect(contours.size());  //检测矩形
+       
+        Point2f a[2];
+        for (int i = 0; i < contours.size(); i++) {
+            boundRect[i] = boundingRect(Mat(contours[i]));
+            a[0] = boundRect[i].br();
+            a[1] = boundRect[i].tl();
+            int length = a[0].x - a[1].x;
+            int width = a[0].y - a[1].y;
+
+            if (length / width >= 1) //16:9 /4:3
+            {
+                rectangle(src, boundRect[i].tl(), boundRect[i].br(), Scalar(125, 0, 0), 3, 8, 0);  //获得屏幕  
+            }
+        }*/
