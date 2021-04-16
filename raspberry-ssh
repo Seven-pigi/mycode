@@ -1,0 +1,10 @@
+open putty
+input IP address
+pi-raspberry
+sudo raspi-config
+sudo apt-get update
+sudo apt-get install tightvncserver
+tightvncserver
+
+open vnc
+ip address+:5901
