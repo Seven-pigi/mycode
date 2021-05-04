@@ -1,0 +1,323 @@
+
+#include<iostream>
+#include<opencv2/opencv.hpp>
+//#include<opencv2/highgui/highgui.hpp>
+//#include<opencv2/imgproc/imgproc.hpp>
+//#include<opencv2/core/core.hpp>
+#include<cmath>
+#include<time.h>
+#include <termios.h>
+#include<unistd.h>
+#include<sys/types.h>
+#include<sys/stat.h>
+#include <stdio.h>  //标准输入输出定义
+#include<fcntl.h>
+#include <string.h>
+#include<termios.h>
+#include<errno.h>
+
+using namespace cv;
+using namespace std;
+
+char len;
+char buffer[512];
+unsigned char buff[1] ;
+
+
+void sleep_ms(unsigned int secs)
+{
+    struct timeval tval;
+    tval.tv_sec = secs / 1000;
+    tval.tv_usec = (secs * 1000) % 1000000;
+    select(0, NULL, NULL, NULL, &tval);
+}
+int fd = open("/dev/ttyUSB0", O_RDWR | O_RDWR | O_NONBLOCK | O_NOCTTY | O_NDELAY);   //ttyUSB0打开设备文件
+
+void Start();
+void Middle();
+void end();
+
+
+void Start()
+{
+    VideoCapture capture(4);
+    Mat src, templ;
+    templ = imread("/home/winterseven/图片/55.png");
+    int n=0;  //红灯次数
+    while(1)
+    {
+
+       int num=0;
+       capture >> src;
+       Mat roi_re = src(Range((src.rows / 5) * 2, (src.rows / 5) * 3), Range((src.cols / 5) * 2, (src.cols / 5) * 3));
+
+       ///////////////////////////////////////////////////////////////////////////////////mubangjiance///////////////////////////////////////////////
+
+       int h = roi_re.rows - templ.rows + 1;
+       int w = roi_re.cols - templ.cols + 1;
+       Mat result;
+       result.create(w, h, CV_32FC1);
+       matchTemplate(roi_re, templ, result, TM_SQDIFF_NORMED);
+       normalize(result, result, 1, 0, NORM_MINMAX, -1, Mat());
+       double minValue = -1;
+       double maxValue;
+       Point minLocation;
+       Point maxLocation;
+       Point matchLocation;
+       minMaxLoc(result, &minValue, &maxValue, &minLocation, &maxLocation, Mat());
+       matchLocation = minLocation;
+       rectangle(roi_re, matchLocation, Point(matchLocation.x + templ.cols, matchLocation.y + templ.rows), Scalar(0, 255, 0), 2, 8, 0);
+       Mat roi = roi_re(Rect(matchLocation, Point(matchLocation.x + templ.cols, matchLocation.y + templ.rows)));  //roi
+       imshow("src",src);
+       imshow("roi_re",roi_re);
+       imshow("roi",roi);
+       /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+     //  Mat roi_HSV;
+//       while(num==0)
+//       {
+       cvtColor(roi,roi,COLOR_BGR2HSV);//Scalar(41, 131, 0), Scalar(141, 255, 116)
+       inRange(roi,Scalar(0, 148, 254), Scalar(28, 255, 255) ,roi);   //Scalar(0, 148, 254), Scalar(28, 255, 255)红色
+
+       imshow("roi",roi);
+       int counter = 0;
+       int rowNumber = roi.rows;  //行数
+       int colNumber = roi.cols * roi.channels();  //列数 x 通道数=每一行元素的个数
+       for (int i = 0; i < rowNumber; i++)  //行循环
+       {
+           uchar* data = roi.ptr<uchar>(i);  //获取第i行的首地址
+           for (int j = 0; j < colNumber; j++)   //列循环
+           {
+               //data[j] = data[j] / div * div + div / 2;
+               //cout << (int)data[j] << endl;
+               if (data[j] == 255) counter += 1;
+
+           }  //行处理结束
+       }
+//sleep(1);
+   //cout << counter << endl;
+       if(counter<10)
+       {
+           cout << "go" << endl;
+           buff[0] = '8';
+           memset(buffer,0,strlen(buffer));  //qing nei chun jiu mei you shuchu
+            write(fd,buff,sizeof(1));  //shuru & daxiao
+            len=read(fd,buffer,sizeof(buffer));
+           // cout << buffer << endl;
+       }
+       if(counter>10&&counter<100)
+       {
+           cout << "stop" << endl;
+           buff[0] = '9';
+           memset(buffer,0,strlen(buffer));  //qing nei chun jiu mei you shuchu
+            write(fd,buff,sizeof(1));  //shuru & daxiao
+            len=read(fd,buffer,sizeof(buffer));
+            //cout << buffer << endl;
+       }
+
+//       imshow("src",roi);
+         char(key)=(char)waitKey(1);
+             //if(key==27)
+//                 break;
+
+
+}
+}
+
+
+
+
+
+void Middle()
+{
+    VideoCapture capture(4);
+    Mat src, templ;
+    templ = imread("/home/winterseven/图片/43.png");   //修改
+    while(1)
+    {
+       capture >> src;
+       Mat roi_re = src(Range((src.rows / 5) * 2, (src.rows / 5) * 3), Range((src.cols / 5) * 2, (src.cols / 5) * 3));   //试试看还需不需要
+       //Mat roi_re=src.clone()；
+       ///////////////////////////////////////////////////////////////////////////////////mubangjiance///////////////////////////////////////////////
+
+       int h = roi_re.rows - templ.rows + 1;
+       int w = roi_re.cols - templ.cols + 1;
+       Mat result;
+       result.create(w, h, CV_32FC1);
+       matchTemplate(roi_re, templ, result, TM_SQDIFF_NORMED);
+       normalize(result, result, 1, 0, NORM_MINMAX, -1, Mat());
+       double minValue = -1;
+       double maxValue;
+       Point minLocation;
+       Point maxLocation;
+       Point matchLocation;
+       minMaxLoc(result, &minValue, &maxValue, &minLocation, &maxLocation, Mat());
+       matchLocation = minLocation;
+       rectangle(roi_re, matchLocation, Point(matchLocation.x + templ.cols, matchLocation.y + templ.rows), Scalar(0, 255, 0), 2, 8, 0);
+       Mat roi = roi_re(Rect(matchLocation, Point(matchLocation.x + templ.cols, matchLocation.y + templ.rows)));  //roi
+       imshow("src",src);
+       imshow("roi_re",roi_re);
+       imshow("roi",roi);
+       /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+       cvtColor(roi,roi,COLOR_BGR2HSV);
+       inRange(roi,Scalar(0, 148, 254), Scalar(28, 255, 255),roi);     //修改
+
+       imshow("roi",roi);
+       int counter = 0;
+       int rowNumber = roi.rows;  //行数
+       int colNumber = roi.cols * roi.channels();  //列数 x 通道数=每一行元素的个数
+       for (int i = 0; i < rowNumber; i++)  //行循环
+       {
+           uchar* data = roi.ptr<uchar>(i);  //获取第i行的首地址
+           for (int j = 0; j < colNumber; j++)   //列循环
+           {
+               //data[j] = data[j] / div * div + div / 2;
+               //cout << (int)data[j] << endl;
+               if (data[j] == 255) counter += 1;
+
+           }  //行处理结束
+       }
+
+   //cout << counter << endl;
+       if(counter<50)
+       {
+           cout << "go" << endl;
+           buff[0] = '8';
+           memset(buffer,0,strlen(buffer));  //qing nei chun jiu mei you shuchu
+            write(fd,buff,sizeof(1));  //shuru & daxiao
+            len=read(fd,buffer,sizeof(buffer));
+       }
+       if(counter>100&&counter<200)
+       {
+           cout << "stop" << endl;
+           buff[0] = '9';
+           memset(buffer,0,strlen(buffer));  //qing nei chun jiu mei you shuchu
+            write(fd,buff,sizeof(1));  //shuru & daxiao
+            len=read(fd,buffer,sizeof(buffer));
+       }
+       imshow("src",roi);
+         char(key)=(char)waitKey(1);
+             //if(key==27)
+//                 break;
+
+
+}
+}
+
+
+void end()
+{
+    VideoCapture capture(4);
+    Mat src, templ;
+    templ = imread("/home/winterseven/图片/49.png");   //修改
+    while(1)
+    {
+       capture >> src;
+       //Mat roi_re = src(Range((src.rows / 5) * 2, (src.rows / 5) * 3), Range((src.cols / 5) * 2, (src.cols / 5) * 3));   //试试看还需不需要
+       Mat roi_re=src.clone();
+       ///////////////////////////////////////////////////////////////////////////////////mubangjiance///////////////////////////////////////////////
+
+       int h = roi_re.rows - templ.rows + 1;
+       int w = roi_re.cols - templ.cols + 1;
+       Mat result;
+       result.create(w, h, CV_32FC1);
+       matchTemplate(roi_re, templ, result, TM_SQDIFF_NORMED);
+       normalize(result, result, 1, 0, NORM_MINMAX, -1, Mat());
+       double minValue = -1;
+       double maxValue;
+       Point minLocation;
+       Point maxLocation;
+       Point matchLocation;
+       minMaxLoc(result, &minValue, &maxValue, &minLocation, &maxLocation, Mat());
+       matchLocation = minLocation;
+       rectangle(roi_re, matchLocation, Point(matchLocation.x + templ.cols, matchLocation.y + templ.rows), Scalar(0, 255, 0), 2, 8, 0);
+       Mat roi = roi_re(Rect(matchLocation, Point(matchLocation.x + templ.cols, matchLocation.y + templ.rows)));  //roi
+       imshow("src",src);
+       imshow("roi_re",roi_re);
+       imshow("roi",roi);
+       /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+       cvtColor(roi,roi,COLOR_BGR2HSV);//Scalar(56, 100, 0), Scalar(77, 255, 255)
+       inRange(roi,Scalar(0, 148, 254), Scalar(28, 255, 255),roi);     //修改
+
+       imshow("roi",roi);
+       int counter = 0;
+       int rowNumber = roi.rows;  //行数
+       int colNumber = roi.cols * roi.channels();  //列数 x 通道数=每一行元素的个数
+       for (int i = 0; i < rowNumber; i++)  //行循环
+       {
+           uchar* data = roi.ptr<uchar>(i);  //获取第i行的首地址
+           for (int j = 0; j < colNumber; j++)   //列循环
+           {
+               //data[j] = data[j] / div * div + div / 2;
+               //cout << (int)data[j] << endl;
+               if (data[j] == 255) counter += 1;
+
+           }  //行处理结束
+       }
+
+    //cout << counter << endl;
+       if(counter>150&&counter<400)
+       {
+           cout << "stop" << endl;
+           buff[0] = '9';
+           memset(buffer,0,strlen(buffer));  //qing nei chun jiu mei you shuchu
+            write(fd,buff,sizeof(1));  //shuru & daxiao
+            len=read(fd,buffer,sizeof(buffer));
+       }
+       if(counter<150)
+       {
+           cout << "go" << endl;
+           buff[0] = '8';
+           memset(buffer,0,strlen(buffer));  //qing nei chun jiu mei you shuchu
+            write(fd,buff,sizeof(1));  //shuru & daxiao
+            len=read(fd,buffer,sizeof(buffer));
+       }
+       imshow("src",roi);
+         char(key)=(char)waitKey(1);
+             //if(key==27)
+//                 break;
+
+
+}
+}
+
+
+int main()
+{
+
+    struct termios options, newstate;
+
+    if(-1==fd)
+    printf("can not open the COM!\n");
+    else
+    printf("open COM ok!\n");
+
+    if (fcntl(fd, F_SETFL, 0) < 0) //改为阻塞模式
+        printf("fcntl failed\n");
+    else
+        printf("fcntl=%d\n", fcntl(fd, F_SETFL, 0));
+    tcgetattr(fd, &options);
+
+    //设置波特率
+    cfsetispeed(&options, B115200);
+    cfsetospeed(&options, B115200);
+
+    //串口设置
+    options.c_cflag |= (CLOCAL | CREAD);
+    options.c_cflag &= ~PARENB;//设置无奇偶校验位，N
+    options.c_cflag &= ~CSTOPB; //设置停止位1
+    options.c_cflag &= ~CSIZE;
+    options.c_cflag |= CS8; //设置数据位
+
+    //read de return
+    options.c_cc[VTIME] = 0;// deng dai de shijian
+    options.c_cc[VMIN] = 1;   //deng dai du qu de zui xiao zi jie shu
+    //激活新配置
+    tcsetattr(fd, TCSANOW, &options);
+
+    Start();
+    Middle();
+    end();
+}
+
